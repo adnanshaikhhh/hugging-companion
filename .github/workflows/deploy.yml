@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-audit:
+    name: Test & security audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          HUGGING_COMPANION_DB_URL: sqlite:///./data/test.db
+        run: |
+          mkdir -p data
+          pytest -v --tb=short
+
+      - name: Security audit (bandit)
+        run: |
+          bandit -r src -ll -q
+
+      - name: Docker smoke build
+        run: |
+          docker build -t hugging-companion:ci .
